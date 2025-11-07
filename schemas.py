@@ -5,8 +5,9 @@ Each Pydantic model maps to a MongoDB collection named after the lowercase class
 Example: Student -> "student", Listing -> "listing"
 """
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, EmailStr
 from typing import Optional, List
+from datetime import datetime, timedelta, timezone
 
 class Student(BaseModel):
     """Student profiles (collection: student)"""
@@ -29,3 +30,27 @@ class Listing(BaseModel):
     images: List[HttpUrl] = Field(default_factory=list, description="Image URLs")
     seller_email: str = Field(..., description="Owner email (must be @satiengg.in)")
     status: str = Field("active", description="active | sold | hidden")
+
+class OTPRequest(BaseModel):
+    email: EmailStr
+    name: str
+
+class OTPVerify(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+
+class OTPRecord(BaseModel):
+    """One-time passcode for email verification (collection: otp)"""
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+    expires_at: datetime
+    consumed: bool = False
+
+    @classmethod
+    def new(cls, email: EmailStr, code: str, ttl_minutes: int = 10):
+        return cls(
+            email=email,
+            code=code,
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes),
+            consumed=False,
+        )
